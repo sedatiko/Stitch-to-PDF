@@ -18,6 +18,7 @@ namespace StitchPDF
         readonly Label lblName = new Label();
         readonly TextBox txtName = new TextBox();
         readonly Label lblExt = new Label();
+        readonly CheckBox chkDelete = new CheckBox();
         readonly Label lblFolder = new Label();
         readonly Button btnOk = new Button();
         readonly Button btnCancel = new Button();
@@ -26,6 +27,7 @@ namespace StitchPDF
 
         public string OutputPath { get; private set; }
         public List<string> OrderedFiles { get { return new List<string>(files); } }
+        public bool DeleteOriginals { get { return chkDelete.Checked; } }
 
         public StitchForm(List<string> initialFiles)
         {
@@ -34,8 +36,8 @@ namespace StitchPDF
             Text = "Stitch into PDF";
             Font = new Font("Segoe UI", 9F);
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(500, 440);
-            MinimumSize = new Size(440, 380);
+            ClientSize = new Size(500, 468);
+            MinimumSize = new Size(440, 408);
             MaximizeBox = false;
             ShowInTaskbar = true;
             AcceptButton = btnOk;
@@ -76,24 +78,29 @@ namespace StitchPDF
             lblExt.SetBounds(356, 324, 40, 18);
             lblExt.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
 
-            lblFolder.SetBounds(12, 352, 476, 18);
+            chkDelete.Text = "Delete merged files (move originals to Recycle Bin)";
+            chkDelete.Checked = false;
+            chkDelete.SetBounds(12, 352, 400, 22);
+            chkDelete.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+
+            lblFolder.SetBounds(12, 380, 476, 18);
             lblFolder.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             lblFolder.ForeColor = SystemColors.GrayText;
             lblFolder.AutoEllipsis = true;
 
             btnOk.Text = "Stitch";
-            btnOk.SetBounds(312, 388, 84, 30);
+            btnOk.SetBounds(312, 416, 84, 30);
             btnOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             btnOk.Click += OnOk;
 
             btnCancel.Text = "Cancel";
-            btnCancel.SetBounds(404, 388, 84, 30);
+            btnCancel.SetBounds(404, 416, 84, 30);
             btnCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             btnCancel.DialogResult = DialogResult.Cancel;
 
             Controls.AddRange(new Control[] {
                 lblHeader, lstFiles, btnUp, btnDown, btnRemove,
-                lblName, txtName, lblExt, lblFolder, btnOk, btnCancel
+                lblName, txtName, lblExt, chkDelete, lblFolder, btnOk, btnCancel
             });
 
             RefreshList();

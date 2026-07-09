@@ -10,14 +10,23 @@
 # MultipleInvokePromptMinimum). Optional; affects all verbs, not just this one.
 [CmdletBinding()]
 param(
-    [string]$SourceDir = (Join-Path $PSScriptRoot 'dist'),
+    [string]$SourceDir,
     [switch]$RaiseMultiSelectLimit
 )
 
 $ErrorActionPreference = 'Stop'
 
+# Source layout: built repo (dist\) or extracted release zip (exe next to this script).
+if (-not $SourceDir) {
+    $SourceDir = if (Test-Path (Join-Path $PSScriptRoot 'StitchPDF.exe')) { $PSScriptRoot }
+                 else { Join-Path $PSScriptRoot 'dist' }
+}
 $exeSrc = Join-Path $SourceDir 'StitchPDF.exe'
 if (-not (Test-Path $exeSrc)) { throw "StitchPDF.exe not found in $SourceDir. Run build.ps1 first." }
+
+# Files downloaded from the internet carry the Mark of the Web; clear it so Windows
+# doesn't block the exe/dll.
+Get-ChildItem $SourceDir -File | Unblock-File -ErrorAction SilentlyContinue
 
 $appDir = Join-Path $env:LOCALAPPDATA 'Programs\StitchPDF'
 New-Item -ItemType Directory -Force $appDir | Out-Null

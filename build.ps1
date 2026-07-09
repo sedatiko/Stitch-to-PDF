@@ -40,6 +40,7 @@ $cscArgs = @(
     '/nologo', '/target:winexe', '/platform:anycpu', '/optimize+',
     "/out:$dist\StitchPDF.exe",
     "/reference:$pdfSharpDll",
+    '/reference:Microsoft.VisualBasic.dll',
     "/win32manifest:$root\src\app.manifest"
 )
 if (Test-Path $icon) { $cscArgs += "/win32icon:$icon" }

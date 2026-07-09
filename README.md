@@ -8,6 +8,9 @@ when done.
 
 - Images (JPG, PNG, GIF, BMP, TIFF) become full-size pages.
 - PDFs are appended page by page.
+- Optional **"Delete merged files"** checkbox (off by default) moves the original
+  files to the **Recycle Bin** after a successful merge — restorable, and files that
+  were skipped are never touched.
 - No admin rights, no installer framework, no runtime to download — it compiles
   against the .NET Framework 4.x already built into Windows 10/11.
 
@@ -21,14 +24,30 @@ when done.
 - Internet access during the build only (to fetch the PDFsharp library from nuget.org).
 - No admin rights: everything installs per-user (`%LOCALAPPDATA%` + `HKCU` registry).
 
-### Step 1 — Get the code
+### Option A — Download a release (no build needed)
+
+1. Grab the latest `StitchPDF-x.y.z-win64.zip` from the
+   [Releases page](https://github.com/sedatiko/Stitch-to-PDF/releases).
+2. Extract it anywhere.
+3. Run the installer from the extracted folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+The script unblocks the downloaded files (Mark of the Web) automatically. Then skip
+straight to **Step 4 — Use it** below.
+
+### Option B — Build from source
+
+#### Step 1 — Get the code
 
 ```powershell
 git clone https://github.com/sedatiko/Stitch-to-PDF.git
 cd Stitch-to-PDF
 ```
 
-### Step 2 — Build
+#### Step 2 — Build
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build.ps1
@@ -37,7 +56,7 @@ powershell -ExecutionPolicy Bypass -File .\build.ps1
 This downloads PDFsharp 1.50 from nuget.org, generates the app icon, and compiles
 `dist\StitchPDF.exe` (~19 KB) next to `dist\PdfSharp.dll`.
 
-### Step 3 — Install
+#### Step 3 — Install
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1
@@ -59,7 +78,8 @@ Optional: Windows hides context-menu verbs when more than 15 items are selected.
 Select any mix of images and PDFs in Explorer, right-click, and on **Windows 11**
 choose **"Show more options" → "Stitch into PDF"** (or press **Shift + right-click**
 to open the classic menu directly). Reorder the files if needed, type a name
-(default `Stitched`), and click **Stitch**. Putting a verb in the new top-level
+(default `Stitched`), optionally tick **"Delete merged files"** to send the originals
+to the Recycle Bin, and click **Stitch**. Putting a verb in the new top-level
 Win11 menu requires a packaged (MSIX) `IExplorerCommand` shell extension, which is
 deliberately out of scope for this little tool.
 
@@ -92,6 +112,7 @@ There is also a silent scripting mode:
 StitchPDF.exe --out C:\out\combined.pdf scan1.jpg scan2.png report.pdf
 ```
 
+Add `--delete` to move the successfully merged source files to the Recycle Bin.
 Exit codes: `0` ok, `3` ok but some files skipped, `1`/`2` failure.
 
 ## Limitations

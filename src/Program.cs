@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using Microsoft.VisualBasic.FileIO;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
@@ -33,9 +34,12 @@ namespace StitchPDF
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            // Silent mode for scripting/testing: StitchPDF.exe --out <output.pdf> <file> <file> ...
-            if (args.Length > 1 && args[0] == "--out")
-                return RunCli(args);
+            // Silent mode for scripting/testing:
+            //   StitchPDF.exe [--delete] --out <output.pdf> <file> <file> ...
+            var argList = new List<string>(args);
+            bool cliDelete = argList.Remove("--delete") | argList.Remove("--delete-originals");
+            if (argList.Count > 1 && argList[0] == "--out")
+                return RunCli(argList, cliDelete);
 
             try
             {
@@ -56,7 +60,7 @@ namespace StitchPDF
             {
                 MessageBox.Show(
                     "Right-click one or more image/PDF files in Explorer and choose \"Stitch into PDF\".\r\n\r\n" +
-                    "Command line: StitchPDF.exe --out <output.pdf> <file1> <file2> ...",
+                    "Command line: StitchPDF.exe [--delete] --out <output.pdf> <file1> <file2> ...",
                     "Stitch into PDF", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return 1;
             }
@@ -91,7 +95,7 @@ namespace StitchPDF
             {
                 var autoOut = UniquePath(Path.Combine(Path.GetDirectoryName(files[0]), "Stitched.pdf"));
                 var autoSkipped = new List<string>();
-                Merge(files, autoOut, autoSkipped);
+                Merge(files, autoOut, autoSkipped, null);
                 return autoSkipped.Count == 0 ? 0 : 3;
             }
 
@@ -101,9 +105,10 @@ namespace StitchPDF
                     return 0;
 
                 var skipped = new List<string>();
+                var merged = new List<string>();
                 try
                 {
-                    Merge(form.OrderedFiles, form.OutputPath, skipped);
+                    Merge(form.OrderedFiles, form.OutputPath, skipped, merged);
                 }
                 catch (Exception ex)
                 {
@@ -117,12 +122,22 @@ namespace StitchPDF
                         string.Join("\r\n", skipped),
                         "Stitch into PDF", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
+                if (form.DeleteOriginals)
+                {
+                    // Only files that actually made it into the PDF; skipped files stay put.
+                    var notRecycled = RecycleFiles(merged, form.OutputPath);
+                    if (notRecycled.Count > 0)
+                        MessageBox.Show("These files could not be moved to the Recycle Bin:\r\n\r\n" +
+                            string.Join("\r\n", notRecycled),
+                            "Stitch into PDF", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+
                 try { Process.Start(form.OutputPath); } catch { }
             }
             return 0;
         }
 
-        static int RunCli(string[] args)
+        static int RunCli(List<string> args, bool deleteOriginals)
         {
             try
             {
@@ -131,13 +146,38 @@ namespace StitchPDF
                 if (files.Count == 0)
                     return 2;
                 var skipped = new List<string>();
-                Merge(files, output, skipped);
+                var merged = new List<string>();
+                Merge(files, output, skipped, merged);
+                if (deleteOriginals)
+                    RecycleFiles(merged, output);
                 return skipped.Count == 0 ? 0 : 3;
             }
             catch
             {
                 return 1;
             }
+        }
+
+        // Sends files to the Recycle Bin (restorable). Returns the ones that could not be recycled.
+        static List<string> RecycleFiles(List<string> files, string outputPath)
+        {
+            var failed = new List<string>();
+            foreach (var file in files)
+            {
+                // Never recycle the PDF we just created (e.g. an input overwritten as the output).
+                if (string.Equals(file, outputPath, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                try
+                {
+                    FileSystem.DeleteFile(file, UIOption.OnlyErrorDialogs,
+                        RecycleOption.SendToRecycleBin, UICancelOption.DoNothing);
+                }
+                catch (Exception ex)
+                {
+                    failed.Add(Path.GetFileName(file) + "  (" + ex.Message + ")");
+                }
+            }
+            return failed;
         }
 
         static void CollectFromSiblings(List<string> files)
@@ -202,7 +242,7 @@ namespace StitchPDF
             }
         }
 
-        internal static void Merge(List<string> files, string outputPath, List<string> skipped)
+        internal static void Merge(List<string> files, string outputPath, List<string> skipped, List<string> merged)
         {
             using (var doc = new PdfDocument())
             {
@@ -214,6 +254,8 @@ namespace StitchPDF
                             AppendPdf(doc, file);
                         else
                             AppendImage(doc, file);
+                        if (merged != null)
+                            merged.Add(file);
                     }
                     catch (Exception ex)
                     {
